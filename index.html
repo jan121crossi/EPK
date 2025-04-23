@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPK Modellierungs-App Advanced</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Basis-Styles */
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    
+    /* Node Styles */
+    .node {
+      min-width: 100px;
+      max-width: 200px;
+      min-height: 50px;
+      position: absolute;
+      padding: 0.75rem;
+      border-width: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+      touch-action: none;
+      cursor: move;
+      word-break: break-word;
+      text-align: center;
+    }
+    
+    /* Formen */
+    .shape-rectangle { border-radius: 0.25rem; }
+    .shape-rounded { border-radius: 1rem; }
+    .shape-circle { border-radius: 9999px; }
+    
+    /* Farben */
+    .node[data-type="Ereignis"] { background: #fecaca; border-color: #dc2626; }
+    .node[data-type="Funktion"] { background: #d1fae5; border-color: #059669; }
+    .node[data-type="XOR"] { background: #fef9c3; border-color: #eab308; }
+    .node[data-type="UND"] { background: #e0f2fe; border-color: #0284c7; }
+    .node[data-type="ODER"] { background: #ede9fe; border-color: #7c3aed; }
+    .node[data-type="INFO"] { background: #fff4df; border-color: #eaac2f; }
+    .node[data-type="Pfeil"] { background: transparent; border-color: transparent; }
+    
+    /* Verbindungslinien */
+    .connection-line {
+      stroke-width: 2px;
+      stroke: #4f46e5;
+      fill: none;
+      pointer-events: stroke;
+      cursor: pointer;
+      z-index: -30;
+    }
+    .connection-line:hover, .connection-line.selected {
+      stroke-width: 3px;
+      stroke: #6366f1;
+    }
+    
+    .connection-line.dashed {
+      stroke-dasharray: 5, 5;
+    }
+    
+    /* Editoren */
+    .editor {
+      transition: all 0.15s ease-out;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      z-index: 50;
+    }
+    
+    /* Formauswahl */
+    .shape-option {
+      width: 40px;
+      height: 40px;
+      margin: 0.25rem;
+      cursor: pointer;
+      border: 2px solid #e5e7eb;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .shape-option:hover {
+      transform: scale(1.1);
+      border-color: #3b82f6;
+    }
+    .shape-option.active {
+      border-color: #3b82f6;
+      background-color: #eff6ff;
+    }
+    
+    /* Auswahl */
+    .node.selected {
+      outline: 2px solid #3b82f6;
+      outline-offset: -2px;
+      z-index: 10;
+    }
+    
+    /* Auswahlrahmen */
+    #selection-box {
+      position: absolute;
+      border: 1px dashed #3b82f6;
+      background-color: rgba(59, 130, 246, 0.1);
+      pointer-events: none;
+      z-index: 9999;
+    }
+    
+    /* Textarea im Editor */
+    #node-desc {
+      resize: vertical;
+      min-height: 60px;
+      max-height: 200px;
+    }
+    
+    /* Verhindert Drag-Events im Editor */
+    .editor * {
+      pointer-events: auto;
+      user-select: text;
+    }
+    
+    /* Element-Symbol */
+    .node-symbol {
+      position: absolute;
+      font-size: 1.5rem;
+      bottom: -0.5rem;
+      right: -0.5rem;
+      z-index: 5;
+      transform: rotate(15deg);
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    /* Legende */
+    #legend {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      background: white;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 20;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.25rem;
+    }
+    
+    .legend-color {
+      width: 1rem;
+      height: 1rem;
+      border-radius: 0.25rem;
+      margin-right: 0.5rem;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    /* Canvas Panning */
+    .canvas-panning {
+      cursor: grabbing;
+    }
+    
+    /* Info Popup */
+    .info-popup {
+      position: absolute;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      max-width: 300px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+    
+    /* Connection Editor Popup */
+    #connection-editor {
+      min-width: 220px;
+    }
+    
+    .connection-option {
+      padding: 0.5rem;
+      margin: 0.25rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      text-align: center;
+    }
+    
+    .connection-option:hover {
+      background: #f3f4f6;
+    }
+    
+    .connection-option.active {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    
+    /* Help Button */
+    .help-button {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      width: 2rem;
+      height: 2rem;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: help;
+      z-index: 10;
+    }
+    
+    /* Element Info Button */
+    .element-info {
+      width: 1.5rem;
+      height: 1.5rem;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      cursor: help;
+      margin-left: 0.5rem;
+    }
+    
+    /* Arrow Element */
+    .arrow-element {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      z-index: 20;
+    }
+    
+    .arrow-direction {
+      width: 0; 
+      height: 0; 
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 20px solid #4f46e5;
+    }
+    
+    .arrow-bidirectional {
+      width: 20px;
+      height: 20px;
+      background: #4f46e5;
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    }
+
+    /* Sidebar element container */
+    .element-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet">
+  
+  <header class="bg-gradient-to-r from-indigo-900 via-gray-900 to-indigo-800 text-white py-5 px-6 shadow-2xl flex items-center justify-between relative overflow-hidden animate-gradient-x font-['Inter']">
+    
+    <h1 class="text-2xl sm:text-3xl font-semibold flex items-center gap-3 transform hover:scale-105 transition-all duration-300">
+      <span class="drop-shadow-lg bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-purple-400">
+        <span class="font-['Bodoni_Moda'] font-bold italic tracking-tighter text-white/90 
+                  transition-all duration-300 hover:text-white hover:tracking-tight">
+          EPK
+        </span> 
+        <span class="font-['Inter'] italic font-light">Designer</span>
+      </span>
+    </h1>
+  
+    <!-- Rest deiner Navigation bleibt gleich -->
+    <nav class="flex items-center gap-5 text-sm text-white/80 hover:text-white transition">
+      <a href="#help" class="hover:underline hover:text-blue-300 transition-colors flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Hilfe & Steuerung
+      </a>
+      <a href="#about" class="hover:underline hover:text-purple-300 transition-colors">Über</a>
+      <a href="https://github.com/" target="_blank" class="hover:underline hover:text-white transition-colors flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 .5C5.6.5.5 5.6.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2.2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.2-1.2-1.5-1.2-1.5-1-.7.1-.7.1-.7 1.1.1 1.6 1.2 1.6 1.2 1 .1 1.5-.7 1.7-1.1.1-.7.4-1.1.6-1.3-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.4 1.2-3.2 0-.3-.5-1.3.1-2.7 0 0 1-.3 3.3 1.2.9-.2 1.9-.3 2.9-.3s2 .1 2.9.3c2.3-1.5 3.3-1.2 3.3-1.2.6 1.4.1 2.4.1 2.7.8.8 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.4.3.7.9.7 1.8v2.6c0 .3.2.7.8.6A10.99 10.99 0 0023.5 12C23.5 5.6 18.4.5 12 .5z"/>
+        </svg>
+        GitHub
+      </a>
+    </nav>
+  </header>
+  
+  <div class="flex h-[calc(100vh-64px)]">
+    <!-- Sidebar -->
+    <div class="w-64 bg-white border-r border-gray-200 p-4 shadow-sm overflow-y-auto flex flex-col">
+      <div class="space-y-2 mb-4">
+        <h3 class="font-semibold text-gray-700 mb-2">Elemente</h3>
+        <div class="element bg-indigo-100 hover:bg-indigo-200 p-3 rounded-lg cursor-grab text-center transition-colors active:scale-95 active:cursor-grabbing" 
+             draggable="true" data-type="Ereignis">
+          <div class="element-container">
+            <span>📌 Ereignis</span>
+            <div class="element-info" onclick="showElementInfo('Ereignis', event)">i</div>
+          </div>
+        </div>
+        <div class="element bg-indigo-100 hover:bg-indigo-200 p-3 rounded-lg cursor-grab text-center transition-colors active:scale-95 active:cursor-grabbing" 
+             draggable="true" data-type="Funktion">
+          <div class="element-container">
+            <span>⚙️ Funktion</span>
+            <div class="element-info" onclick="showElementInfo('Funktion', event)">i</div>
+          </div>
+        </div>
+        <div class="element bg-indigo-100 hover:bg-indigo-200 p-3 rounded-lg cursor-grab text-center transition-colors active:scale-95 active:cursor-grabbing" 
+             draggable="true" data-type="XOR">
+          <div class="element-container">
+            <span>⚖️ XOR</span>
+            <div class="element-info" onclick="showElementInfo('XOR', event)">i</div>
+          </div>
+        </div>
+        <div class="element bg-indigo-100 hover:bg-indigo-200 p-3 rounded-lg cursor-grab text-center transition-colors active:scale-95 active:cursor-grabbing" 
+             draggable="true" data-type="UND">
+          <div class="element-container">
+            <span>╋ UND</span>
+            <div class="element-info" onclick="showElementInfo('UND', event)">i</div>
+          </div>
+        </div>
+        <div class="element bg-indigo-100 hover:bg-indigo-200 p-3 rounded-lg cursor-grab text-center transition-colors active:scale-95 active:cursor-grabbing" 
+             draggable="true" data-type="ODER">
+          <div class="element-container">
+            <span>⚖️ ODER</span>
+            <div class="element-info" onclick="showElementInfo('ODER', event)">i</div>
+          </div>
+        </div>
+        <div class="element bg-indigo-100 hover:bg-indigo-200 p-3 rounded-lg cursor-grab text-center transition-colors active:scale-95 active:cursor-grabbing" 
+             draggable="true" data-type="INFO">
+          <div class="element-container">
+            <span>📁 INFO</span>
+            <div class="element-info" onclick="showElementInfo('INFO', event)">i</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Help Button in Sidebar -->
+      <div class="help-button" onclick="showHelpPopup(event)">?</div>
+    </div>
+
+    <!-- Main Canvas -->
+    <div class="flex-grow relative bg-white overflow-hidden" id="canvas">
+      <svg id="connections" class="absolute top-0 left-0 w-full h-full pointer-events-none">
+      </svg>
+      
+      <!-- Node Editor -->
+      <div id="node-editor" class="absolute hidden bg-white rounded-lg border border-gray-200 p-4 w-64 editor">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-lg">Element bearbeiten</h3>
+          <button onclick="hideEditor()" class="text-gray-500 hover:text-gray-700 transition-colors">
+            ✕
+          </button>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" id="node-name" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
+            <textarea id="node-desc" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Farbe</label>
+            <div class="flex space-x-2">
+              <div class="color-option w-6 h-6 rounded-full bg-red-200 border-2 border-red-500 cursor-pointer" data-color="red" data-bg="fecaca" data-border="dc2626"></div>
+              <div class="color-option w-6 h-6 rounded-full bg-green-200 border-2 border-green-500 cursor-pointer" data-color="green" data-bg="d1fae5" data-border="059669"></div>
+              <div class="color-option w-6 h-6 rounded-full bg-blue-200 border-2 border-blue-500 cursor-pointer" data-color="blue" data-bg="e0f2fe" data-border="0284c7"></div>
+              <div class="color-option w-6 h-6 rounded-full bg-yellow-200 border-2 border-yellow-500 cursor-pointer" data-color="yellow" data-bg="fef9c3" data-border="eab308"></div>
+              <div class="color-option w-6 h-6 rounded-full bg-purple-200 border-2 border-purple-500 cursor-pointer" data-color="purple" data-bg="ede9fe" data-border="7c3aed"></div>
+              <div class="color-option w-6 h-6 rounded-full bg-purple-200 border-2 border-purple-500 cursor-pointer" data-color="orange" data-bg="fff4df" data-border="7c3aed"></div>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Form</label>
+            <div class="flex flex-wrap">
+              <div class="shape-option shape-rectangle active" data-shape="rectangle">□</div>
+              <div class="shape-option shape-rounded" data-shape="rounded">□</div>
+              <div class="shape-option shape-circle" data-shape="circle">○</div>
+            </div>
+          </div>
+          
+          <div id="connections-list" class="max-h-32 overflow-y-auto border rounded-md p-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Verbindungen</label>
+            <div class="text-sm text-gray-500">Klicken Sie auf eine Verbindung</div>
+          </div>
+          
+          <div class="flex space-x-2 pt-2">
+            <button onclick="updateNode()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors active:scale-95">
+              Speichern
+            </button>
+            <button onclick="deleteCurrentNode()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md transition-colors active:scale-95">
+              Löschen
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Connection Editor -->
+      <div id="connection-editor" class="absolute hidden bg-white rounded-lg border border-gray-200 p-4 editor">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-lg">Verbindung bearbeiten</h3>
+          <button onclick="hideConnectionEditor()" class="text-gray-500 hover:text-gray-700 transition-colors">
+            ✕
+          </button>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Verbindungstyp</label>
+            <div class="flex flex-col">
+              <div class="connection-option active" data-type="direct" data-style="solid">─ Gerade Verbindung</div>
+              <div class="connection-option" data-type="corner" data-style="solid">┘ Eckige Verbindung</div>
+              <div class="connection-option" data-type="direct" data-style="dashed">-- Getrichelte Verbindung</div>
+            </div>
+          </div>
+          
+          <div class="flex space-x-2 pt-2">
+            <button onclick="deleteCurrentConnection()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md transition-colors active:scale-95">
+              Löschen
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Legend -->
+      <div id="legend" class="hidden">
+        <h3 class="font-semibold mb-2">Legende</h3>
+        <div class="legend-item">
+          <div class="legend-color bg-red-200 border-red-500"></div>
+          <span>Ereignis</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color bg-green-200 border-green-500"></div>
+          <span>Funktion</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color bg-yellow-200 border-yellow-500"></div>
+          <span>XOR</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color bg-blue-200 border-blue-500"></div>
+          <span>UND</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color bg-purple-200 border-purple-500"></div>
+          <span>ODER</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color bg-orange-200 border-orange-500"></div>
+          <span>INFO</span>
+        </div>
+      </div>
+      
+      <!-- Info Popup -->
+      <div id="info-popup" class="info-popup hidden"></div>
+      
+      <!-- Help Popup -->
+      <div id="help-popup" class="info-popup hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-lg">EPK-Hilfe</h3>
+          <button onclick="hideHelpPopup()" class="text-gray-500 hover:text-gray-700 transition-colors">
+            ✕
+          </button>
+        </div>
+        <div class="prose">
+          <h4>Ereignisgesteuerte Prozesskette (EPK)</h4>
+          <p>Eine EPK ist ein Modellierungswerkzeug zur Darstellung von Geschäftsprozessen. Sie besteht aus:</p>
+          <ul>
+            <li><strong>Ereignissen</strong>: Zustände/Bedingungen (passiv)</li>
+            <li><strong>Funktionen</strong>: Aktivitäten/Tätigkeiten (aktiv)</li>
+            <li><strong>Verknüpfungsoperatoren</strong>: Logische Verknüpfungen</li>
+          </ul>
+          <p>Verwenden Sie die verschiedenen Elemente, um Ihren Prozess zu modellieren.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== GLOBALE VARIABLEN ==========
+    const canvas = document.getElementById("canvas");
+    const connections = document.getElementById("connections");
+    const nodeEditor = document.getElementById("node-editor");
+    const connectionEditor = document.getElementById("connection-editor");
+    const legend = document.getElementById("legend");
+    const infoPopup = document.getElementById("info-popup");
+    const helpPopup = document.getElementById("help-popup");
+    
+    let draggedType = null;
+    let nodes = [];
+    let lines = [];
+    let selectedNode = null;
+    let selectedNodes = [];
+    let selectedLine = null;
+    let currentNodeBeingEdited = null;
+    let currentConnectionBeingEdited = null;
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    let selectionBox = null;
+    let isSelecting = false;
+    let selectionStart = { x: 0, y: 0 };
+    let lastClickTime = 0;
+    let requestId = null;
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let canvasOffset = { x: 0, y: 0 };
+    let arrows = [];
+
+    // Symbol mapping for element types
+    const typeSymbols = {
+      "Ereignis": "📌",
+      "Funktion": "⚙️",
+      "XOR": "x⚖️",
+      "UND": "🔗",
+      "ODER": "⚖️",
+      "INFO": "📁",
+    };
+
+    // Info texts for elements
+    const typeInfo = {
+      "Ereignis": {
+        title: "Ereignis",
+        description: "Ein Ereignis ist ein Zustand oder eine Bedingung, die eintritt und den Prozess beeinflusst. Ereignisse haben keine Funktionen und werden durch passive Verben beschrieben (z.B. 'Bestellung eingegangen').",
+        example: "Beispiele:\n- Bestellung eingegangen\n- Zahlung erhalten\n- Produkt ausgeliefert"
+      },
+      "Funktion": {
+        title: "Funktion",
+        description: "Eine Funktion beschreibt eine Aktivität oder Aufgabe, die ausgeführt wird. Funktionen werden durch aktive Verben im Infinitiv beschrieben (z.B. 'Bestellung prüfen').",
+        example: "Beispiele:\n- Bestellung prüfen\n- Rechnung erstellen\n- Ware verpacken"
+      },
+      "XOR": {
+        title: "XOR-Verknüpfung",
+        description: "Eine XOR-Verknüpfung (exklusives ODER) zeigt an, dass genau einer der eingehenden Pfade gewählt werden muss. Es handelt sich um eine Entscheidung mit sich gegenseitig ausschließenden Alternativen.",
+        example: "Beispiel:\nEntweder Kunde zahlt per Kreditkarte\nODER Kunde zahlt per Rechnung"
+      },
+      "UND": {
+        title: "UND-Verknüpfung",
+        description: "Eine UND-Verknüpfung zeigt an, dass alle eingehenden Pfade gleichzeitig aktiv sein müssen, bevor der Prozess fortgesetzt wird. Alle vorherigen Schritte müssen abgeschlossen sein.",
+        example: "Beispiel:\nWare verpackt UND Versandetikett erstellt"
+      },
+      "ODER": {
+        title: "ODER-Verknüpfung",
+        description: "Eine ODER-Verknüpfung zeigt an, dass mindestens einer der eingehenden Pfade aktiv sein muss, um den Prozess fortzusetzen. Es können auch mehrere Pfade gleichzeitig aktiv sein.",
+        example: "Beispiel:\nKunde bezahlt per Kreditkarte\nODER Kunde bezahlt per PayPal"
+      },
+      "INFO": {
+        title: "Informationsobjekt",
+        description: "Ein Informations­objekt, das einen eingetretenen Zustand oder eine Bedingung beschreibt und so den Prozess beeinflusst. Es ist passiv, besitzt keine Funktionen und wird durch passive Verben formuliert.",
+        example: "Beispiele: \n-Bestellung \n-Zahlung \n-Produkt"
+      }
+    };
+
+    // ========== INITIALISIERUNG ==========
+    function initialize() {
+      setupDragEvents();
+      setupCanvasEvents();
+      setupColorOptions();
+      setupShapeOptions();
+      setupConnectionOptions();
+      
+      // Verhindere Drag-Events im Editor
+      document.querySelectorAll('.editor input, .editor textarea, .editor button').forEach(el => {
+        el.addEventListener('mousedown', e => e.stopPropagation());
+      });
+      
+      // Toggle legend on double click canvas
+      canvas.addEventListener('dblclick', (e) => {
+        if (!e.target.closest('.node') && !e.target.classList.contains('connection-line')) {
+          legend.classList.toggle('hidden');
+        }
+      });
+    }
+
+    function setupDragEvents() {
+      document.querySelectorAll(".element").forEach(el => {
+        el.addEventListener("dragstart", e => {
+          draggedType = e.target.getAttribute("data-type");
+          e.dataTransfer.setData("text/plain", draggedType);
+          e.dataTransfer.effectAllowed = "copy";
+        });
+      });
+    }
+
+    function setupCanvasEvents() {
+      canvas.addEventListener("dragover", e => e.preventDefault());
+      canvas.addEventListener("drop", handleCanvasDrop);
+      canvas.addEventListener("mousedown", handleCanvasMouseDown);
+      canvas.addEventListener("click", handleCanvasClick);
+      
+      // Right-click panning
+      canvas.addEventListener('contextmenu', e => e.preventDefault());
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { // Right click
+          isPanning = true;
+          panStart = { x: e.clientX, y: e.clientY };
+          canvas.style.cursor = 'grabbing';
+          e.preventDefault();
+        }
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+          const dx = e.clientX - panStart.x;
+          const dy = e.clientY - panStart.y;
+          
+          canvasOffset.x += dx;
+          canvasOffset.y += dy;
+          
+          // Move all nodes
+          nodes.forEach(node => {
+            const currentLeft = parseFloat(node.style.left) || 0;
+            const currentTop = parseFloat(node.style.top) || 0;
+            node.style.left = `${currentLeft + dx}px`;
+            node.style.top = `${currentTop + dy}px`;
+          });
+          
+          // Move arrows
+          arrows.forEach(arrow => {
+            arrow.x += dx;
+            arrow.y += dy;
+            positionArrow(arrow);
+          });
+          
+          panStart = { x: e.clientX, y: e.clientY };
+          updateConnections();
+        }
+      });
+      
+      document.addEventListener('mouseup', (e) => {
+        if (e.button === 2 && isPanning) {
+          isPanning = false;
+          canvas.style.cursor = '';
+        }
+      });
+    }
+
+    function setupColorOptions() {
+      document.querySelectorAll(".color-option").forEach(option => {
+        option.addEventListener("click", handleColorChange);
+      });
+    }
+
+    function setupShapeOptions() {
+      document.querySelectorAll(".shape-option").forEach(option => {
+        option.addEventListener("click", handleShapeChange);
+      });
+    }
+
+    function setupConnectionOptions() {
+      document.querySelectorAll(".connection-option").forEach(option => {
+        option.addEventListener("click", handleConnectionOptionClick);
+      });
+    }
+
+    // ========== EVENT HANDLER ==========
+    function handleCanvasDrop(e) {
+      e.preventDefault();
+      const type = e.dataTransfer.getData("text/plain");
+      if (type === "Pfeil") {
+        // Pfeil wird direkt auf die Linie gezogen
+        return;
+      }
+      createNode(type, e.clientX - canvas.getBoundingClientRect().left - canvasOffset.x, 
+                e.clientY - canvas.getBoundingClientRect().top - canvasOffset.y);
+    }
+
+    function handleCanvasMouseDown(e) {
+      // Ignoriere Klicks im Editor
+      if (e.target.closest('.editor')) return;
+      
+      if (e.button !== 0) return;
+      
+      // Starte Auswahl nur wenn nicht auf einem Node oder einer Linie geklickt wurde
+      if (!e.target.closest(".node") && !e.target.classList.contains("connection-line") && !e.target.closest(".arrow-element")) {
+        clearSelection();
+        startSelection(e);
+      }
+    }
+
+    function handleCanvasClick(e) {
+      // Ignoriere Klicks im Editor
+      if (e.target.closest('.editor')) return;
+      
+      // Schließe Editoren wenn ins Leere geklickt wird
+      if (!e.target.closest(".node") && 
+          !e.target.classList.contains("connection-line") &&
+          !e.target.closest(".arrow-element")) {
+        hideEditor();
+        hideConnectionEditor();
+        hideInfoPopup();
+      }
+      
+      // Klick auf Verbindungslinie
+      if (e.target.classList.contains("connection-line")) {
+        handleLineClick(e);
+      }
+      
+      // Klick auf Pfeil-Element
+      if (e.target.closest(".arrow-element")) {
+        const arrowElement = e.target.closest(".arrow-element");
+        const arrow = arrows.find(a => a.element === arrowElement);
+        if (arrow) {
+          toggleArrowDirection(arrow);
+        }
+      }
+    }
+
+    function handleLineClick(e) {
+      e.stopPropagation();
+      const line = e.target;
+      const connection = lines.find(conn => conn.line === line);
+      
+      if (connection) {
+        // Alte Selektion entfernen
+        if (selectedLine) {
+          selectedLine.classList.remove("selected");
+        }
+        
+        // Neue Selektion setzen
+        selectedLine = line;
+        selectedLine.classList.add("selected");
+        
+        // Editor positionieren
+        const fromRect = connection.from.getBoundingClientRect();
+        const toRect = connection.to.getBoundingClientRect();
+        const x = (fromRect.left + toRect.left) / 2;
+        const y = (fromRect.top + toRect.top) / 2;
+        
+        showConnectionEditor(connection, x, y);
+      }
+    }
+
+    function handleColorChange() {
+      if (!currentNodeBeingEdited) return;
+      const bgColor = `#${this.dataset.bg}`;
+      const borderColor = `#${this.dataset.border}`;
+      
+      currentNodeBeingEdited.style.background = bgColor;
+      currentNodeBeingEdited.style.borderColor = borderColor;
+      
+      const typeMap = {
+        fecaca: "Ereignis",
+        d1fae5: "Funktion",
+        fef9c3: "XOR",
+        e0f2fe: "UND",
+        ede9fe: "ODER",
+        ede9fe: "INFO"
+      };
+      
+      if (typeMap[this.dataset.bg]) {
+        const newType = typeMap[this.dataset.bg];
+        currentNodeBeingEdited.setAttribute("data-type", newType);
+        
+        // Update symbol
+        const symbol = currentNodeBeingEdited.querySelector('.node-symbol');
+        if (symbol) {
+          symbol.textContent = typeSymbols[newType] || '';
+        }
+      }
+    }
+
+    function handleShapeChange() {
+      if (!currentNodeBeingEdited) return;
+      
+      // Entferne alle Shape-Klassen
+      const shapes = ["rectangle", "rounded", "circle"];
+      shapes.forEach(shape => {
+        currentNodeBeingEdited.classList.remove(`shape-${shape}`);
+      });
+      
+      // Füge neue Shape-Klasse hinzu
+      const newShape = this.dataset.shape;
+      currentNodeBeingEdited.classList.add(`shape-${newShape}`);
+      
+      // Aktualisiere aktive Option
+      document.querySelectorAll(".shape-option").forEach(opt => {
+        opt.classList.remove("active");
+      });
+      this.classList.add("active");
+    }
+
+    function handleConnectionOptionClick() {
+      if (!currentConnectionBeingEdited) return;
+      
+      // Update aktive Option
+      document.querySelectorAll(".connection-option").forEach(opt => {
+        opt.classList.remove("active");
+      });
+      this.classList.add("active");
+      
+      // Update Verbindung
+      const connIndex = lines.findIndex(conn => conn === currentConnectionBeingEdited);
+      
+      if (connIndex !== -1) {
+        lines[connIndex].type = this.dataset.type;
+        lines[connIndex].style = this.dataset.style;
+        updateConnections();
+      }
+    }
+
+    // ========== NODE FUNKTIONEN ==========
+    function createNode(type, x, y, name = type, description = '', shape = "rectangle") {
+      const node = document.createElement("div");
+      node.className = `node shape-${shape}`;
+      node.setAttribute("data-type", type);
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+
+      const content = document.createElement("div");
+      content.className = "node-content w-full h-full flex flex-col items-center justify-center";
+      
+      const label = document.createElement("span");
+      label.className = "font-bold block text-center";
+      label.textContent = name;
+      content.appendChild(label);
+
+      const desc = document.createElement("small");
+      desc.className = "block text-xs text-gray-600 text-center";
+      desc.textContent = description;
+      content.appendChild(desc);
+      
+      node.appendChild(content);
+      
+      // Add symbol
+      const symbol = document.createElement("div");
+      symbol.className = "node-symbol";
+      symbol.textContent = typeSymbols[type] || '';
+      node.appendChild(symbol);
+
+      // Event Listener
+      node.addEventListener("mousedown", startDrag);
+      node.addEventListener("touchstart", handleTouchStart, { passive: false });
+      node.addEventListener("dblclick", handleNodeDoubleClick);
+      node.addEventListener("click", handleNodeClick);
+
+      canvas.appendChild(node);
+      nodes.push(node);
+      return node;
+    }
+
+    function handleNodeClick(e) {
+      e.stopPropagation();
+      
+      // Doppelklick-Prüfung
+      const currentTime = new Date().getTime();
+      if (currentTime - lastClickTime < 300) {
+        handleNodeDoubleClick(e);
+        lastClickTime = 0;
+        return;
+      }
+      lastClickTime = currentTime;
+
+      // Verbindungsmodus mit Ctrl/Cmd
+      if (e.ctrlKey || e.metaKey) {
+        handleConnectionMode(this);
+      } else {
+        // Einfacher Klick - Auswahl
+        if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+          clearSelection();
+        }
+        toggleNodeSelection(this);
+      }
+    }
+
+    function handleNodeDoubleClick(e) {
+      e.stopPropagation();
+      showEditor(this, e.clientX, e.clientY);
+    }
+
+    function handleConnectionMode(node) {
+      if (selectedNode && selectedNode !== node) {
+        connectNodes(selectedNode, node);
+        selectedNode = null;
+      } else {
+        selectedNode = node;
+        node.classList.add("ring-2", "ring-indigo-500");
+        setTimeout(() => node.classList.remove("ring-2", "ring-indigo-500"), 1000);
+      }
+    }
+
+    function toggleNodeSelection(node) {
+      const index = selectedNodes.indexOf(node);
+      if (index === -1) {
+        node.classList.add("selected");
+        selectedNodes.push(node);
+      } else {
+        node.classList.remove("selected");
+        selectedNodes.splice(index, 1);
+      }
+    }
+
+    function clearSelection() {
+      // Nodes deselektieren
+      selectedNodes.forEach(node => {
+        node.classList.remove("selected");
+      });
+      selectedNodes = [];
+      
+      // Linien deselektieren
+      if (selectedLine) {
+        selectedLine.classList.remove("selected");
+        selectedLine = null;
+      }
+      
+      // Auswahlrahmen entfernen
+      if (selectionBox && selectionBox.parentNode) {
+        selectionBox.parentNode.removeChild(selectionBox);
+        selectionBox = null;
+      }
+    }
+
+    // ========== DRAG & DROP FUNKTIONEN ==========
+    function startDrag(e) {
+      // Ignoriere Klicks im Editor
+      if (e.target.closest('.editor')) return;
+      
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const node = e.currentTarget;
+      isDragging = true;
+      const canvasRect = canvas.getBoundingClientRect();
+      const nodeRect = node.getBoundingClientRect();
+      
+      // Wenn Node nicht ausgewählt ist, nur dieses bewegen
+      if (!selectedNodes.includes(node)) {
+        clearSelection();
+        selectedNodes = [node];
+        node.classList.add("selected");
+      }
+
+      dragOffset = { 
+        x: e.clientX - nodeRect.left, 
+        y: e.clientY - nodeRect.top 
+      };
+
+      // Originalpositionen aller ausgewählten Nodes speichern
+      const originalPositions = selectedNodes.map(n => {
+        const rect = n.getBoundingClientRect();
+        return {
+          node: n,
+          left: rect.left - canvasRect.left,
+          top: rect.top - canvasRect.top
+        };
+      });
+
+      // Animation mit requestAnimationFrame für flüssiges Bewegen
+      function moveNodes(e) {
+        if (!isDragging) return;
+        
+        const dx = e.clientX - canvasRect.left - dragOffset.x;
+        const dy = e.clientY - canvasRect.top - dragOffset.y;
+
+        selectedNodes.forEach((n, i) => {
+          const original = originalPositions[i];
+          const offsetX = original.left - originalPositions[0].left;
+          const offsetY = original.top - originalPositions[0].top;
+          n.style.left = `${dx + offsetX}px`;
+          n.style.top = `${dy + offsetY}px`;
+        });
+
+        // Verbindungen sofort aktualisieren
+        updateConnections();
+        requestId = requestAnimationFrame(() => moveNodes(e));
+      }
+
+      function stopDrag() {
+        if (!isDragging) return;
+        isDragging = false;
+        cancelAnimationFrame(requestId);
+        document.removeEventListener("mousemove", moveNodes);
+        document.removeEventListener("mouseup", stopDrag);
+      }
+
+      document.addEventListener("mousemove", moveNodes);
+      document.addEventListener("mouseup", stopDrag);
+      
+      // Sofortigen ersten Aufruf
+      moveNodes(e);
+    }
+
+    function handleTouchStart(e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent("mousedown", {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        bubbles: true
+      });
+      this.dispatchEvent(mouseEvent);
+    }
+
+    // ========== SELECTION FUNKTIONEN ==========
+    function startSelection(e) {
+      // Ignoriere Klicks im Editor
+      if (e.target.closest('.editor')) return;
+      
+      isSelecting = true;
+      selectionStart = { x: e.clientX, y: e.clientY };
+
+      selectionBox = document.createElement("div");
+      selectionBox.id = "selection-box";
+      Object.assign(selectionBox.style, {
+        left: `${selectionStart.x}px`,
+        top: `${selectionStart.y}px`,
+        width: "0px",
+        height: "0px"
+      });
+      document.body.appendChild(selectionBox);
+
+      function onMouseMove(e) {
+        if (!isSelecting) return;
+        const x1 = Math.min(e.clientX, selectionStart.x);
+        const y1 = Math.min(e.clientY, selectionStart.y);
+        const x2 = Math.max(e.clientX, selectionStart.x);
+        const y2 = Math.max(e.clientY, selectionStart.y);
+
+        Object.assign(selectionBox.style, {
+          left: `${x1}px`,
+          top: `${y1}px`,
+          width: `${x2 - x1}px`,
+          height: `${y2 - y1}px`
+        });
+
+        // Temporäre Auswahl
+        document.querySelectorAll(".node").forEach((node) => {
+          const rect = node.getBoundingClientRect();
+          const isInSelection = rect.left < x2 && rect.right > x1 && 
+                              rect.top < y2 && rect.bottom > y1;
+          
+          if (isInSelection && !selectedNodes.includes(node)) {
+            node.classList.add("selected");
+          } else if (!isInSelection && selectedNodes.includes(node) && 
+                    !selectionBox.contains(node)) {
+            node.classList.remove("selected");
+          }
+        });
+      }
+
+      function onMouseUp() {
+        if (!isSelecting) return;
+        isSelecting = false;
+        
+        // Finale Auswahl setzen
+        selectedNodes = Array.from(document.querySelectorAll(".node.selected"));
+        
+        if (selectionBox && selectionBox.parentNode) {
+          selectionBox.parentNode.removeChild(selectionBox);
+        }
+        selectionBox = null;
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      }
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    }
+
+    // ========== EDITOR FUNKTIONEN ==========
+    function showEditor(node, x, y) {
+      currentNodeBeingEdited = node;
+      document.getElementById("node-name").value = node.querySelector("span").textContent;
+      document.getElementById("node-desc").value = node.querySelector("small").textContent;
+      updateConnectionsList();
+      positionEditor(x, y);
+      nodeEditor.classList.remove("hidden");
+      nodeEditor.style.opacity = "0";
+      nodeEditor.style.transform = "translateY(10px)";
+      
+      // Aktive Form anzeigen
+      const shapes = ["rectangle", "rounded", "circle"];
+      shapes.forEach(shape => {
+        if (node.classList.contains(`shape-${shape}`)) {
+          document.querySelector(`.shape-option[data-shape="${shape}"]`).classList.add("active");
+        } else {
+          document.querySelector(`.shape-option[data-shape="${shape}"]`).classList.remove("active");
+        }
+      });
+      
+      setTimeout(() => {
+        nodeEditor.style.opacity = "1";
+        nodeEditor.style.transform = "translateY(0)";
+      }, 10);
+    }
+
+    function showConnectionEditor(connection, x, y) {
+      currentConnectionBeingEdited = connection;
+      positionConnectionEditor(x, y);
+      connectionEditor.classList.remove("hidden");
+      connectionEditor.style.opacity = "0";
+      connectionEditor.style.transform = "translateY(10px)";
+      
+      // Aktive Verbindungsoption anzeigen
+      document.querySelectorAll(".connection-option").forEach(opt => {
+        opt.classList.remove("active");
+        if (opt.dataset.type === connection.type && 
+            opt.dataset.style === connection.style) {
+          opt.classList.add("active");
+        }
+      });
+      
+      setTimeout(() => {
+        connectionEditor.style.opacity = "1";
+        connectionEditor.style.transform = "translateY(0)";
+      }, 10);
+    }
+
+    function showElementInfo(type, event) {
+      event.stopPropagation();
+      const info = typeInfo[type];
+      if (!info) return;
+      
+      infoPopup.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-bold text-lg">${info.title}</h3>
+          <button onclick="hideInfoPopup()" class="text-gray-500 hover:text-gray-700 transition-colors">
+            ✕
+          </button>
+        </div>
+        <p class="mb-2">${info.description}</p>
+        <p class="text-sm whitespace-pre-line">${info.example}</p>
+      `;
+      
+      infoPopup.style.left = `${event.clientX}px`;
+      infoPopup.style.top = `${event.clientY}px`;
+      infoPopup.classList.remove("hidden");
+    }
+
+    function showHelpPopup(event) {
+      event.stopPropagation();
+      helpPopup.style.left = `${event.clientX}px`;
+      helpPopup.style.top = `${event.clientY}px`;
+      helpPopup.classList.remove("hidden");
+    }
+
+    function hideInfoPopup() {
+      infoPopup.classList.add("hidden");
+    }
+
+    function hideHelpPopup() {
+      helpPopup.classList.add("hidden");
+    }
+
+    function positionEditor(x, y) {
+      const editorWidth = nodeEditor.offsetWidth;
+      const editorHeight = nodeEditor.offsetHeight;
+      const canvasRect = canvas.getBoundingClientRect();
+      
+      let left = x - canvasRect.left;
+      let top = y - canvasRect.top;
+      
+      if (left + editorWidth > canvas.offsetWidth) left = left - editorWidth;
+      if (top + editorHeight > canvas.offsetHeight) top = top - editorHeight;
+      
+      nodeEditor.style.left = `${Math.max(10, left)}px`;
+      nodeEditor.style.top = `${Math.max(10, top)}px`;
+    }
+
+    function positionConnectionEditor(x, y) {
+      const editorWidth = connectionEditor.offsetWidth;
+      const editorHeight = connectionEditor.offsetHeight;
+      const canvasRect = canvas.getBoundingClientRect();
+      
+      let left = x - canvasRect.left;
+      let top = y - canvasRect.top;
+      
+      if (left + editorWidth > canvas.offsetWidth) left = left - editorWidth;
+      if (top + editorHeight > canvas.offsetHeight) top = top - editorHeight;
+      
+      connectionEditor.style.left = `${Math.max(10, left)}px`;
+      connectionEditor.style.top = `${Math.max(10, top)}px`;
+    }
+
+    function updateConnectionsList() {
+      const connectionsList = document.getElementById("connections-list");
+      const connectionsHtml = lines
+        .filter(conn => conn.from === currentNodeBeingEdited || conn.to === currentNodeBeingEdited)
+        .map(conn => {
+          const otherNode = conn.from === currentNodeBeingEdited ? conn.to : conn.from;
+          const direction = conn.from === currentNodeBeingEdited ? "→" : "←";
+          return `
+            <div class="flex items-center justify-between py-1 border-b border-gray-100">
+              <span class="text-sm">${otherNode.querySelector("span").textContent} ${direction}</span>
+              <button onclick="selectConnection(${lines.indexOf(conn)})" class="text-blue-500 hover:text-blue-700 text-xs p-1">
+                Bearbeiten
+              </button>
+            </div>
+          `;
+        })
+        .join("");
+      
+      connectionsList.innerHTML = `
+        <label class="block text-sm font-medium text-gray-700 mb-1">Verbindungen</label>
+        ${connectionsHtml || '<div class="text-sm text-gray-500">Keine Verbindungen</div>'}
+      `;
+    }
+
+    function selectConnection(index) {
+      if (index >= 0 && index < lines.length) {
+        const connection = lines[index];
+        
+        // Position für Editor berechnen (Mitte der Verbindung)
+        const fromRect = connection.from.getBoundingClientRect();
+        const toRect = connection.to.getBoundingClientRect();
+        const x = (fromRect.left + toRect.left) / 2;
+        const y = (fromRect.top + toRect.top) / 2;
+        
+        // Alte Selektion entfernen
+        if (selectedLine) {
+          selectedLine.classList.remove("selected");
+        }
+        
+        // Neue Selektion setzen
+        selectedLine = connection.line;
+        selectedLine.classList.add("selected");
+        
+        // Editor anzeigen
+        showConnectionEditor(connection, x, y);
+      }
+    }
+
+    function hideEditor() {
+      nodeEditor.style.opacity = "0";
+      nodeEditor.style.transform = "translateY(10px)";
+      setTimeout(() => {
+        nodeEditor.classList.add("hidden");
+        currentNodeBeingEdited = null;
+      }, 200);
+    }
+
+    function hideConnectionEditor() {
+      connectionEditor.style.opacity = "0";
+      connectionEditor.style.transform = "translateY(10px)";
+      setTimeout(() => {
+        connectionEditor.classList.add("hidden");
+        currentConnectionBeingEdited = null;
+        if (selectedLine) {
+          selectedLine.classList.remove("selected");
+          selectedLine = null;
+        }
+      }, 200);
+    }
+
+    function updateNode() {
+      if (!currentNodeBeingEdited) return;
+      const name = document.getElementById("node-name").value;
+      const desc = document.getElementById("node-desc").value;
+      currentNodeBeingEdited.querySelector("span").textContent = name;
+      currentNodeBeingEdited.querySelector("small").textContent = desc;
+      hideEditor();
+    }
+
+    function deleteCurrentNode() {
+      if (!currentNodeBeingEdited) return;
+      if (confirm("Element wirklich löschen? Alle Verbindungen werden entfernt.")) {
+        // Lösche alle Pfeile auf dieser Verbindung
+        const nodeArrows = arrows.filter(arrow => 
+          lines.some(line => 
+            (line.from === currentNodeBeingEdited || line.to === currentNodeBeingEdited) && 
+            line === arrow.connection
+          )
+        );
+        
+        nodeArrows.forEach(arrow => {
+          if (arrow.element.parentNode) {
+            arrow.element.parentNode.removeChild(arrow.element);
+          }
+        });
+        
+        arrows = arrows.filter(arrow => !nodeArrows.includes(arrow));
+        
+        // Lösche Verbindungen
+        lines = lines.filter(conn => {
+          if (conn.from === currentNodeBeingEdited || conn.to === currentNodeBeingEdited) {
+            connections.removeChild(conn.line);
+            return false;
+          }
+          return true;
+        });
+        
+        canvas.removeChild(currentNodeBeingEdited);
+        nodes = nodes.filter(n => n !== currentNodeBeingEdited);
+        selectedNodes = selectedNodes.filter(n => n !== currentNodeBeingEdited);
+        hideEditor();
+      }
+    }
+
+    function deleteCurrentConnection() {
+      if (!currentConnectionBeingEdited) return;
+      if (confirm("Verbindung wirklich löschen?")) {
+        // Lösche alle Pfeile auf dieser Verbindung
+        const connectionArrows = arrows.filter(arrow => arrow.connection === currentConnectionBeingEdited);
+        connectionArrows.forEach(arrow => {
+          if (arrow.element.parentNode) {
+            arrow.element.parentNode.removeChild(arrow.element);
+          }
+        });
+        arrows = arrows.filter(arrow => !connectionArrows.includes(arrow));
+        
+        const index = lines.indexOf(currentConnectionBeingEdited);
+        if (index !== -1) {
+          connections.removeChild(lines[index].line);
+          lines.splice(index, 1);
+        }
+        hideConnectionEditor();
+      }
+    }
+
+    // ========== VERBINDUNGSFUNKTIONEN ==========
+    function connectNodes(from, to) {
+      const existingConn = lines.find(conn => 
+        (conn.from === from && conn.to === to) || (conn.from === to && conn.to === from)
+      );
+      
+      if (existingConn) {
+        currentConnectionBeingEdited = existingConn;
+        showConnectionEditor(existingConn);
+        return;
+      }
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      line.classList.add("connection-line");
+      line.setAttribute("stroke", "#4f46e5");
+      line.setAttribute("stroke-width", "2");
+      line.setAttribute("fill", "none");
+
+      line.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const connection = lines.find(conn => conn.line === e.target);
+        if (connection) {
+          showConnectionEditor(connection, e.clientX, e.clientY);
+        }
+      });
+
+      connections.appendChild(line);
+      const newConnection = { 
+        line, 
+        from, 
+        to,
+        type: 'direct',
+        style: 'solid'
+      };
+      lines.push(newConnection);
+      updateConnections();
+      
+      // Füge einen Standard-Pfeil hinzu
+      addArrowToConnection(newConnection);
+    }
+
+    function updateConnections() {
+      lines.forEach(({ line, from, to, type, style }) => {
+        const fromRect = from.getBoundingClientRect();
+        const toRect = to.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+
+        const fromX = fromRect.left - canvasRect.left + fromRect.width / 2;
+        const fromY = fromRect.top - canvasRect.top + fromRect.height / 2;
+        const toX = toRect.left - canvasRect.left + toRect.width / 2;
+        const toY = toRect.top - canvasRect.top + toRect.height / 2;
+
+        // Berechne Richtungsvektor
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        
+        // Normalisiere den Vektor
+        const nx = dx / length;
+        const ny = dy / length;
+        
+        // Abstand vom Rand (10px)
+        const offset = 10;
+        
+        // Start- und Endpunkte anpassen, damit Pfeile sichtbar sind
+        const startX = fromX + nx * offset;
+        const startY = fromY + ny * offset;
+        const endX = toX - nx * offset;
+        const endY = toY - ny * offset;
+
+        if (type === 'direct') {
+          line.setAttribute('d', `M${startX},${startY} L${endX},${endY}`);
+        } else {
+          // Eckige Verbindung mit Knickpunkten
+          const midX1 = fromX + dx * 0.5;
+          const midY1 = fromY;
+          const midX2 = midX1;
+          const midY2 = toY;
+          line.setAttribute('d', `M${startX},${startY} L${midX1},${midY1} L${midX2},${midY2} L${endX},${endY}`);
+        }
+
+        // Linienstil setzen
+        if (style === 'dashed') {
+          line.classList.add('dashed');
+        } else {
+          line.classList.remove('dashed');
+        }
+      });
+      
+      // Positioniere alle Pfeile neu
+      arrows.forEach(arrow => {
+        positionArrow(arrow);
+      });
+    }
+
+    // ========== PFEIL-FUNKTIONEN ==========
+    function addArrowToConnection(connection) {
+      const arrow = {
+        connection,
+        direction: 'to', // 'to', 'from', 'both'
+        x: 0,
+        y: 0,
+        element: document.createElement('div')
+      };
+      
+      arrow.element.className = 'arrow-element';
+      arrow.element.innerHTML = '<div class="arrow-direction"></div>';
+      arrow.element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleArrowDirection(arrow);
+      });
+      
+      // Rechtsklick zum Löschen
+      arrow.element.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (confirm('Pfeil wirklich löschen?')) {
+          if (arrow.element.parentNode) {
+            arrow.element.parentNode.removeChild(arrow.element);
+          }
+          arrows = arrows.filter(a => a !== arrow);
+        }
+      });
+      
+      canvas.appendChild(arrow.element);
+      arrows.push(arrow);
+      positionArrow(arrow);
+    }
+
+    function positionArrow(arrow) {
+      const { connection, direction } = arrow;
+      const fromRect = connection.from.getBoundingClientRect();
+      const toRect = connection.to.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+
+      const fromX = fromRect.left - canvasRect.left + fromRect.width / 2;
+      const fromY = fromRect.top - canvasRect.top + fromRect.height / 2;
+      const toX = toRect.left - canvasRect.left + toRect.width / 2;
+      const toY = toRect.top - canvasRect.top + toRect.height / 2;
+
+      // Position in der Mitte der Linie
+      const midX = (fromX + toX) / 2;
+      const midY = (fromY + toY) / 2;
+      
+      // Berechne Winkel der Linie
+      const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+      
+      arrow.x = midX;
+      arrow.y = midY;
+      
+      arrow.element.style.left = `${midX - 10}px`;
+      arrow.element.style.top = `${midY - 10}px`;
+      
+      // Richtung anzeigen
+      updateArrowAppearance(arrow, angle);
+    }
+
+    function toggleArrowDirection(arrow) {
+      if (arrow.direction === 'to') {
+        arrow.direction = 'from';
+      } else if (arrow.direction === 'from') {
+        arrow.direction = 'both';
+      } else {
+        arrow.direction = 'to';
+      }
+      
+      // Find the angle of the connection line
+      const { connection } = arrow;
+      const fromRect = connection.from.getBoundingClientRect();
+      const toRect = connection.to.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+
+      const fromX = fromRect.left - canvasRect.left + fromRect.width / 2;
+      const fromY = fromRect.top - canvasRect.top + fromRect.height / 2;
+      const toX = toRect.left - canvasRect.left + toRect.width / 2;
+      const toY = toRect.top - canvasRect.top + toRect.height / 2;
+      
+      const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+      
+      updateArrowAppearance(arrow, angle);
+    }
+
+    // In der updateArrowAppearance Funktion:
+    function updateArrowAppearance(arrow, angle) {
+      arrow.element.innerHTML = '';
+      
+      // Bei eckigen Verbindungen immer vertikal ausrichten
+      const isCorner = arrow.connection.type === 'corner';
+      const displayAngle = isCorner ? 90 : angle;
+      
+      if (arrow.direction === 'both') {
+        const bidirElement = document.createElement('div');
+        bidirElement.className = 'arrow-bidirectional';
+        arrow.element.appendChild(bidirElement);
+        
+        // Rotate the bidirectional arrow (immer vertikal bei eckigen Linien)
+        arrow.element.style.transform = `rotate(${displayAngle + 90}deg)`;
+      } else {
+        const dirElement = document.createElement('div');
+        dirElement.className = 'arrow-direction';
+        
+        // Rotate the arrow based on line angle (nur bei direkten Linien)
+        arrow.element.style.transform = `rotate(${displayAngle + 90}deg)`;
+        
+        // Flip if direction is 'from'
+        if (arrow.direction === 'from') {
+          dirElement.style.transform = 'rotate(180deg)';
+        }
+        
+        arrow.element.appendChild(dirElement);
+      }
+    }
+
+    // ========== HILFSFUNKTIONEN ==========
+    function showHelp() {
+      const helpText = `
+        <h3 class="font-bold text-lg mb-2">EPK Modellierungs-Hilfe</h3>
+        <div class="space-y-2">
+          <p><strong>Elemente</strong>: Per Drag & Drop auf die Zeichenfläche ziehen</p>
+          <p><strong>Bearbeiten</strong>: Doppelklick auf Element</p>
+          <p><strong>Verbindungen</strong>: Ctrl+Klick auf zwei Elemente</p>
+          <p><strong>Pfeile</strong>: Auf Verbindung klicken um Richtung zu ändern</p>
+          <p><strong>Rechtsklick</strong>: Auf Pfeil zum Löschen</p>
+          <p><strong>Verschieben</strong>: Rechtsklick + Ziehen</p>
+          <p><strong>Legende</strong>: Doppelklick auf Zeichenfläche</p>
+        </div>
+      `;
+      
+      alert(helpText);
+    }
+
+    // ========== INITIALISIERUNG ==========
+    document.addEventListener("DOMContentLoaded", initialize);
+  </script>
+</body>
+</html>

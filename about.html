@@ -1,0 +1,107 @@
+<!-- about.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Über – EPK App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-gray-100 to-white text-gray-800">
+
+  <!-- Header (identisch) -->
+  <header class="backdrop-blur-md bg-white/10 text-white py-4 px-6 shadow-md flex items-center justify-between fixed top-0 w-full z-50 border-b border-white/10 font-['Inter']">
+    <h1 class="text-xl sm:text-2xl font-semibold flex items-center gap-2 tracking-tight hover:scale-[1.02] transition-transform duration-300">
+      <span class="text-2xl">🧩</span>
+      <span class="text-white/90">EPK App</span>
+    </h1>
+    <nav class="hidden sm:flex items-center gap-6 text-sm text-white/70">
+      <a href="about.html" class="hover:text-white transition">Über</a>
+      <a href="help.html" class="hover:text-white transition">Hilfe</a>
+      <a href="#contact" class="hover:text-white transition">Kontakt</a>
+    </nav>
+  </header>
+
+  <main class="pt-28 px-6 max-w-3xl mx-auto">
+    <section class="mb-12">
+      <h2 class="text-3xl font-semibold mb-4">Über diese App</h2>
+      <p class="text-gray-700 leading-relaxed">
+        Die EPK Modellierungs-App ist ein digitales Werkzeug zur Erstellung ereignisgesteuerter Prozessketten (EPK) für Studierende und Fachkräfte.
+        Sie wurde entwickelt, um das Modellieren von Prozessen interaktiv, verständlich und visuell ansprechend zu gestalten.
+      </p>
+    </section>
+
+    <section class="mb-12">
+      <h3 class="text-2xl font-semibold mb-2">Technologien</h3>
+      <ul class="list-disc list-inside text-gray-700">
+        <li>JavaScript mit Drag-and-Drop Oberfläche</li>
+        <li>Tailwind CSS für modernes UI</li>
+        <li>SVG-basierte Verbindungen & Bearbeitungsmodi</li>
+      </ul>
+    </section>
+
+    <section class="mt-16 border-t pt-6 text-sm text-gray-500">
+      <h4 class="font-semibold text-gray-600 mb-2">Impressum</h4>
+      <p>Jan Eggers<br>Hamburg, Deutschland<br>E-Mail: jan@example.com</p>
+      <p class="mt-2">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV: Jan Eggers</p>
+    </section>
+  </main>
+
+</body>
+</html>
+
+<!-- help.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hilfe – EPK App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-gray-100 to-white text-gray-800">
+
+  <!-- Header (identisch) -->
+  <header class="backdrop-blur-md bg-white/10 text-white py-4 px-6 shadow-md flex items-center justify-between fixed top-0 w-full z-50 border-b border-white/10 font-['Inter']">
+    <h1 class="text-xl sm:text-2xl font-semibold flex items-center gap-2 tracking-tight hover:scale-[1.02] transition-transform duration-300">
+      <span class="text-2xl">🧩</span>
+      <span class="text-white/90">EPK App</span>
+    </h1>
+    <nav class="hidden sm:flex items-center gap-6 text-sm text-white/70">
+      <a href="about.html" class="hover:text-white transition">Über</a>
+      <a href="help.html" class="hover:text-white transition">Hilfe</a>
+      <a href="#contact" class="hover:text-white transition">Kontakt</a>
+    </nav>
+  </header>
+
+  <main class="pt-28 px-6 max-w-3xl mx-auto">
+    <h2 class="text-3xl font-semibold mb-6">Hilfe & FAQ</h2>
+
+    <div class="space-y-6">
+      <div>
+        <h3 class="text-xl font-semibold">Wie erstelle ich eine EPK?</h3>
+        <p class="text-gray-700">Nutze die Drag-&-Drop-Funktion, um Elemente wie Ereignisse, Funktionen und Konnektoren auf das Zeichenfeld zu ziehen. Verknüpfe sie durch Ziehen von Verbindungslinien.</p>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-semibold">Wie kann ich meine EPK speichern?</h3>
+        <p class="text-gray-700">Aktuell unterstützt die App den Export als Bild (PNG). Ein JSON-Export wird in Kürze hinzugefügt.</p>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-semibold">Ich habe einen Fehler gefunden. Was nun?</h3>
+        <p class="text-gray-700">Bitte sende eine E-Mail an <a href="mailto:jan@example.com" class="text-indigo-600 hover:underline">jan@example.com</a> mit einer kurzen Beschreibung und ggf. Screenshot.</p>
+      </div>
+    </div>
+  </main>
+
+</body>
+</html>
